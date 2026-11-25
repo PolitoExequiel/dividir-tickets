@@ -10,6 +10,12 @@ def manifest(): return send_from_directory('.', 'manifest.json')
 def icon(): return send_from_directory('.', 'icon.svg')
 @app.get('/sw.js')
 def sw(): return send_from_directory('.', 'sw.js')
+@app.post('/api/auth')
+def auth():
+    secret=os.getenv('APP_PASSWORD','')
+    if not secret: return jsonify(error='Contraseña no configurada.'),503
+    if not hmac.compare_digest(request.headers.get('X-App-Password','').encode(),secret.encode()): return jsonify(error='Contraseña incorrecta.'),401
+    return jsonify(ok=True)
 @app.post('/api/read')
 def read():
     secret=os.getenv('APP_PASSWORD','')
