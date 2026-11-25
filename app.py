@@ -10,18 +10,17 @@ def manifest(): return send_from_directory('.', 'manifest.json')
 def icon(): return send_from_directory('.', 'icon.svg')
 @app.get('/sw.js')
 def sw(): return send_from_directory('.', 'sw.js')
-@app.post('/api/auth')
-def auth():
-    secret=os.getenv('APP_PASSWORD','')
-    if not secret: return jsonify(error='Contraseña no configurada.'),503
-    if not hmac.compare_digest(request.headers.get('X-App-Password','').encode(),secret.encode()): return jsonify(error='Contraseña incorrecta.'),401
-    return jsonify(ok=True)
 @app.post('/api/read')
 def read():
-    secret=os.getenv('APP_PASSWORD','')
-    key=os.getenv('GEMINI_API_KEY','').strip()
-    if not secret or not key: return jsonify(error='Falta configurar Gemini y la contraseña en Render.'),503
-    if not hmac.compare_digest(request.headers.get('X-App-Password',''),secret): return jsonify(error='Contraseña incorrecta.'),401
+    token=request.headers.get('Authorization','')
+    if not token.startswith('Bearer '): return jsonify(error='Iniciá sesión con Google.'),401
+    try:
+        req=urllib.request.Request('https://tywgtsyokncjjekteyyg.supabase.co/auth/v1/user',headers={'Authorization':token,'apikey':'sb_publishable_6R30YssrTwiFDiUNiuGC0Q_9s36U609'})
+        with urllib.request.urlopen(req,timeout=10) as r: user=json.load(r)
+        if not user.get('id'): return jsonify(error='Sesión inválida.'),401
+    except Exception: return jsonify(error='No se pudo validar la sesión.'),401
+    key=request.headers.get('X-Gemini-Key','').strip()
+    if not key: return jsonify(error='Configurá tu propia clave Gemini.'),400
     f=request.files.get('photo')
     if not f or f.mimetype not in ('image/jpeg','image/png','image/webp'): return jsonify(error='Usá una foto JPG, PNG o WebP.'),400
     model=os.getenv('GEMINI_MODEL','').strip().removeprefix('models/')
